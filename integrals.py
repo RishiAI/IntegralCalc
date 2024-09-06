@@ -30,10 +30,12 @@ def fourier_series(x, n_terms=10):
 
 def riemann(f,a,b,n): #     this is our simple riemann. you should know how to do this one. if not, the code should explain. f is our function, a is our left limit and b is our right. n is the amt of rectangles that we're summing. the more we use, the more accurate this measurement is. 
     dx = (b-a)/n #    defining our infinitesimal change in x (its not actually infinitesimal but i would hope that you plug in an n value large enough for it to be accurate)
-    totals = 0  #   initializing our sums
+    totalleft = 0
+    totalright = 0#   initializing our sums
     for i in range(n): #breaking down the function into n rectangles with width dx and height of the function at that point.
-        totals += (dx)* f(a+(dx)*i) #sum up the rectangles
-    return totals 
+        totalleft += (dx)* f(a+(dx)*i) #sum up the rectangles from left endpoint to right
+        totalright += (dx)* f(b-(dx)*i)#sum up the rectangles from right endpoint to left
+    return (totalleft + totalright)/2 #average for accuracy! over and under estimates get cancelled out. now its comparable to the darboux in terms of accuracy, in some cases better.
 
 print (riemann(f,0,1,1000)) #test riemann integral for f(x) = x^2 from 0-1
 print (riemann(g,0,3*math.pi/2,1000)) #test riemann integral for f(x) = sin(x) from 0 to 3pi/2
@@ -41,7 +43,7 @@ print (riemann(g,0,3*math.pi/2,1000)) #test riemann integral for f(x) = sin(x) f
 
 def darboux(f,a,b,n): #    this is not so different from a riemann. however, instead of using our left endpoint and/or right endpoint as our height values, we take the supremum or infimum of our infinitely small rectangles
     x = np.linspace(a, b, n+1, dtype=np.float64) #      dont worry about this, just saving x as a vector so that i can store multiple scalar values in for my xi's
-    dx = (b - a) / n  
+    dx = (b-a)/n  
     y = np.array([f(xi) for xi in x], dtype=np.float64) #       creatng an array to store my n # of f(xi) values 
     
     lower_sum = np.sum(np.minimum(y[:-1], y[1:]) * dx) #        finding the min for each rectangle, its a lot of rectangles
@@ -51,11 +53,10 @@ def darboux(f,a,b,n): #    this is not so different from a riemann. however, ins
 
 print (darboux(f,0,1,1000)) #test darboux integral for f(x) = x^2 from 0-1
 print (darboux(g,0,3*math.pi/2,1000)) #test darboux integral for f(x) = sinx from 0-3pi/2
-print (darboux(g,0,math.pi/2,1000)) #test darboux integral for f(x) = sinx from 0-pi/2
 
 
 def stieltjes(f, g, a, b, n): #    the stieltjes integral is different than the previous two. now we're taking an integral with respect to alpha(x). for the sake of not adding in annoying symbols we'll call alpha g. 
-    dx = (b - a) / n
+    dx = (b-a) / n
     total = 0
     for i in range(n):
         x = a + i * dx
@@ -63,7 +64,7 @@ def stieltjes(f, g, a, b, n): #    the stieltjes integral is different than the 
     return total
 
 print(stieltjes(f,h, 0,1,1000))
-print(stieltjes(g,h,0,4.7123889803,1000)) #test stieljes integral for f(x) = sin(x) from 0-3pi/2
+print(stieltjes(g,h,0,3*math.pi/2,1000)) #test stieljes integral for f(x) = sin(x) from 0-3pi/2
 
 #--------------------------------------------------------------------------------------------------
 #this is where it gets serious and the integrals get a lot lot lot harder

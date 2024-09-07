@@ -33,8 +33,8 @@ def riemann(f,a,b,n): #     this is our simple riemann. you should know how to d
     totalleft = 0
     totalright = 0#   initializing our sums
     for i in range(n): #breaking down the function into n rectangles with width dx and height of the function at that point.
-        totalleft += (dx)* f(a+(dx)*i) #sum up the rectangles from left endpoint to right
-        totalright += (dx)* f(b-(dx)*i)#sum up the rectangles from right endpoint to left
+        totalleft += (dx) * f(a+(dx)*i) #sum up the rectangles from left endpoint to right
+        totalright += (dx) * f(b-(dx)*i)#sum up the rectangles from right endpoint to left
     return (totalleft + totalright)/2 #average for accuracy! over and under estimates get cancelled out. now its comparable to the darboux in terms of accuracy, in some cases better.
 
 print (riemann(f,0,1,1000)) #test riemann integral for f(x) = x^2 from 0-1
@@ -57,11 +57,14 @@ print (darboux(g,0,3*math.pi/2,1000)) #test darboux integral for f(x) = sinx fro
 
 def stieltjes(f, g, a, b, n): #    the stieltjes integral is different than the previous two. now we're taking an integral with respect to alpha(x). for the sake of not adding in annoying symbols we'll call alpha g. 
     dx = (b-a) / n
-    total = 0
+    totalleft = 0
+    totalright = 0
     for i in range(n):
-        x = a + i * dx
-        total += f(x) * (g(x + dx) - g(x))
-    return total
+        x_left = a + i * dx
+        x_right = b - i * dx
+        totalleft += f(x_left) * (g(x_left + dx) - g(x_left)) #taking a left and right and averaging them just like the other integrals.
+        totalright += f(x_right) * (g(x_right + dx) - g(x_right)) #similar to riemann but in terms of another function
+    return (totalleft+totalright)/2
 
 print(stieltjes(f,h, 0,1,1000))
 print(stieltjes(g,h,0,3*math.pi/2,1000)) #test stieljes integral for f(x) = sin(x) from 0-3pi/2
@@ -80,11 +83,8 @@ def measure_preimage(f, y_min, y_max, a, b, n): #this is a method that our lebes
     
     return measure
 
-def lebesgue(f, a, b, r, n):  #
+def lebesgue(f, a, b, r, n):  
     """
-    parameters:
-    - f: the function to integrate
-    - a, b: the integration bounds
     - r: mumber of intervals to partition the range of f into
     - domain_samples: number of samples to take in the domain to approximate the measure
     """
@@ -103,7 +103,7 @@ def lebesgue(f, a, b, r, n):  #
         total += mid_value * measure 
     
     return total
-print(lebesgue(dirichlet, 0, 1, 100, 10000)) 
+#print(lebesgue(dirichlet, 0, 1, 100, 10000)) #when running other files on this, comment this line out to save time
 
 """
 this is not 100% accurate. the answer should be 0. theoretically if our r & n value was infinity, this would be 0, but i highly recommend not plugging in bigger numbers than the ones above. 
@@ -114,5 +114,16 @@ you do NOT want to melt your CPU by running it a billion times more for 2 extra 
 
 the same can be said for the next two which are both supposed to be 1, but will be a few decimals off.
 """
-print(lebesgue(cauchy_pdf, -10, 10, r=100, n=10000))
-print(lebesgue(lambda x: fourier_series(x, n_terms=50), 0, 1, r=100, n=10000))
+print(lebesgue(cauchy_pdf, -10, 10, 100, 10000))
+#print(lebesgue(lambda x: fourier_series(x, n_terms=50), 0, 1, 100, 10000)) #when running other files on this, comment this line out to save time
+
+
+
+
+
+
+
+
+
+
+

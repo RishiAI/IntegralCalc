@@ -2,6 +2,7 @@ import re
 import math
 import numpy as np
 import integrals as inte
+from visualize_integral import visualize_integral
 
 class Token:
     def __init__(self, type, value):
@@ -136,7 +137,9 @@ class IntegralQueryParser:
         
         integral_type = self.determine_integral_type(query)
         function = self.extract_function(query)
-        lower_bound, upper_bound = self.extract_bounds(query)
+        lower_bound, upper_bound = extract_bounds(query)
+        
+        print(f"Extracted function: {function}")
         
         return {
             'integral_type': integral_type,
@@ -144,6 +147,7 @@ class IntegralQueryParser:
             'lower_bound': lower_bound,
             'upper_bound': upper_bound
         }
+
 
     def determine_integral_type(self, query):
         if any(word in query for word in ['riemann', 'standard', 'regular', 'normal']):
@@ -155,10 +159,16 @@ class IntegralQueryParser:
         return 'standard'  # default to standard if not specified
 
     def extract_function(self, query):
-        # check for dirichlet function description
+        # check for Dirichlet function description
         dirichlet_pattern = r'f\s*\(\s*x\s*\)\s*=\s*1\s+for\s+rational.*?0\s+for\s+irrational'
         if re.search(dirichlet_pattern, query, re.IGNORECASE):
             return "1 if is_rational(x) else 0"
+        
+        # check for direct math function input
+        math_func_pattern = r'(math\.\w+\(x\))'
+        math_func_match = re.search(math_func_pattern, query)
+        if math_func_match:
+            return math_func_match.group(1)
         
         # check for general function description
         function_match = re.search(r'f\s*\(\s*x\s*\)\s*=\s*(.+?)(?:\s+from|$)', query)
@@ -174,21 +184,29 @@ class IntegralQueryParser:
         
         return None
 
-    def extract_bounds(self, query):
-        bounds_match = re.search(r'from\s*([-]?\d*\.?\d+)\s*to\s*([-]?\d*\.?\d+)', query)
-        if bounds_match:
-            return float(bounds_match.group(1)), float(bounds_match.group(2))
-        return None, None
+def extract_bounds(query):
+    # improved bound extraction to handle mathematical expressions
+    bounds_match = re.search(r'from\s*([-]?[\d\.*\w]+)\s*to\s*([-]?[\d\.*\w]+)', query)
+    if bounds_match:
+        lower = eval(bounds_match.group(1), {"__builtins__": None, "pi": math.pi, "e": math.e})
+        upper = eval(bounds_match.group(2), {"__builtins__": None, "pi": math.pi, "e": math.e})
+        return float(lower), float(upper)
+    return None, None
 
 
 def is_rational(x, tolerance=1e-10):
     return abs(x - round(x)) < tolerance
 
 def parse_function(func_str):
+    if is_dirichlet_function(func_str):
+        return lambda x: 1 if is_rational(x) else 0
+    
+    # add support for mathematical constants and functions
     safe_dict = {
         "abs": abs, "sin": math.sin, "cos": math.cos, "tan": math.tan,
         "exp": math.exp, "log": math.log, "pi": math.pi, "e": math.e,
-        "sqrt": math.sqrt, "is_rational": is_rational
+        "sqrt": math.sqrt, "is_rational": is_rational,
+        "math": math  # Add the entire math module
     }
     
     def func(x):
@@ -210,38 +228,101 @@ def is_differentiable(f, a, b, h=1e-5, n=1000):
     except:
         return False
 
-def determine_best_integral(f, a, b):
-    if is_differentiable(f, a, b):
-        return "riemann"
-    elif is_continuous(f, a, b):
-        return "darboux"
-    else:
-        return "lebesgue"
+def is_common_continuous_function(func_str):
+    common_functions = ['sin', 'cos', 'tan', 'exp', 'log', 'sqrt']
+    return any(func in func_str for func in common_functions)
 
-def compute_integral(func_str, a, b, n=1000, r=100):
-    # check for dirichlet function first
-    if func_str == "1 if is_rational(x) else 0":
-        return inte.lebesgue(parse_function(func_str), a, b, r, n), "lebesgue"
-    
-    # for other functions, determine the best method
-    func = parse_function(func_str)
-    integral_type = determine_best_integral(func, a, b)
-    
-    if integral_type == "riemann":
-        result = inte.riemann(func, a, b, n)
-    elif integral_type == "darboux":
-        result = inte.darboux(func, a, b, n)
-    else:  
-        result = inte.lebesgue(func, a, b, r, n)
-    
-    return result, integral_type
+
+def is_dirichlet_function(func_str):
+    return "1 if is_rational(x) else 0" in func_str.replace(" ", "")
+
+def determine_best_integral(func, func_str, a, b):
+    print(f"Determining best integral for function: {func_str}")
+    if is_dirichlet_function(func_str):
+        print("Identified as Dirichlet function")
+        return "lebesgue"
+    if is_common_continuous_function(func_str):
+        print("Identified as common continuous function")
+        return "riemann"
+    try:
+        if is_differentiable(func, a, b):
+            print("Function is differentiable")
+            return "riemann"
+        elif is_continuous(func, a, b):
+            print("Function is continuous")
+            return "riemann"
+        else:
+            print("Function is neither differentiable nor continuous")
+            return "lebesgue"
+    except:
+        print("Error in determining function properties, defaulting to Riemann")
+        return "riemann"  # Default to Riemann if checks fail
+
+
+
+def compute_and_visualize_integral(func_str, a, b, n=1000, r=100):
+    try:
+        print(f"Computing and visualizing integral for function: {func_str}")
+        print(f"Bounds: a={a}, b={b}")
+        
+        func = parse_function(func_str)
+        print(f"Parsed function: {func}")
+        
+        integral_type = determine_best_integral(func, func_str, a, b)
+        print(f"Determined integral type: {integral_type}")
+        
+        if integral_type == "riemann":
+            print("Calculating Riemann integral...")
+            result = inte.riemann(func, a, b, n)
+            print(f"Riemann integral result: {result}")
+            if result is None:
+                print("Warning: Riemann integral returned None")
+            else:
+                print("Visualizing Riemann integral...")
+                visualize_integral(func, a, b, 'riemann', n=20)
+        else:  # Lebesgue
+            print("Calculating Lebesgue integral...")
+            result = inte.lebesgue(func, a, b, r, n)
+            print(f"Lebesgue integral result: {result}")
+            if result is None:
+                print("Warning: Lebesgue integral returned None")
+            else:
+                print("Visualizing Lebesgue integral...")
+                visualize_integral(func, a, b, 'lebesgue', n=20)
+        
+        return result, integral_type
+    except Exception as e:
+        print(f"Error in compute_and_visualize_integral: {str(e)}")
+        print(f"Error occurred at line {e.__traceback__.tb_lineno}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+def compute_integral(func_str, a, b, n=1000, r=100, visualize=False):
+    try:
+        if visualize:
+            return compute_and_visualize_integral(func_str, a, b, n, r)
+        
+        func = parse_function(func_str)
+        integral_type = determine_best_integral(func, func_str, a, b)
+        
+        if integral_type == "riemann":
+            result = inte.riemann(func, a, b, n)
+        else:  # Lebesgue
+            result = inte.lebesgue(func, a, b, r, n)
+        
+        return result, integral_type
+    except Exception as e:
+        print(f"Error in compute_integral: {str(e)}")
+        raise
 
 def user_interface():
-    print("Advanced Mathematical Expression Parser with Improved Dirichlet Function Parsing")
+    print("Advanced Mathematical Expression Parser with Visualization Option")
     print("You can now ask questions in natural language.")
     print("For example:")
     print("- 'Calculate the integral of x^2 from 0 to 1'")
-    print("- 'Compute the Lebesgue integral of f(x)=1 for rational x and f(x)=0 for irrational x from 0 to 1'")
+    print("- 'Visualize the Lebesgue integral of f(x)=1 for rational x and f(x)=0 for irrational x from 0 to 1'")
+    print("- 'Visualize the integral of sin(x) from pi to 2*pi'")
     print("Type 'quit' to exit.")
     
     query_parser = IntegralQueryParser()
@@ -267,7 +348,12 @@ def user_interface():
             print(f"Function: {intent['function']}")
             print(f"Bounds: from {intent['lower_bound']} to {intent['upper_bound']}")
             
-            result, method = compute_integral(intent['function'], intent['lower_bound'], intent['upper_bound'])
+            visualize = 'visualize' in user_input.lower()
+            if visualize:
+                result, method = compute_and_visualize_integral(intent['function'], intent['lower_bound'], intent['upper_bound'])
+            else:
+                result, method = compute_integral(intent['function'], intent['lower_bound'], intent['upper_bound'])
+            
             print(f"\nThe integral of the given function from {intent['lower_bound']} to {intent['upper_bound']} is approximately {result}")
             print(f"Method used: {method}")
         except Exception as e:
